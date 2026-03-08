@@ -1,5 +1,7 @@
-require File.expand_path(File.dirname(__FILE__) + '/../spec_helper')
+require_relative '../spec_helper'
 
+require 'test/unit'
+Test::Unit::AutoRunner.need_auto_run = false
 require 'test/unit/testresult'
 class Test::Unit::TestCase
   include Dataset
@@ -8,9 +10,9 @@ end
 describe Test::Unit::TestCase do
   it 'should have a dataset method' do
     testcase = Class.new(Test::Unit::TestCase)
-    testcase.should respond_to(:dataset)
+    expect(testcase).to respond_to(:dataset)
   end
-  
+
   it 'should accept multiple datasets' do
     load_count = 0
     dataset_one = Class.new(Dataset::Base) do
@@ -23,14 +25,14 @@ describe Test::Unit::TestCase do
       dataset dataset_one, dataset_two
     end
     run_testcase(testcase)
-    load_count.should be(2)
+    expect(load_count).to eq(2)
   end
-  
+
   it 'should provide one dataset session for tests' do
     sessions = []
     testcase = Class.new(Test::Unit::TestCase) do
       dataset Class.new(Dataset::Base)
-      
+
       define_method(:test_one) do
         sessions << dataset_session
       end
@@ -39,10 +41,10 @@ describe Test::Unit::TestCase do
       end
     end
     run_testcase(testcase)
-    sessions.size.should be(2)
-    sessions.uniq.size.should be(1)
+    expect(sessions.size).to eq(2)
+    expect(sessions.uniq.size).to eq(1)
   end
-  
+
   it 'should load datasets within class hiearchy' do
     dataset_one = Class.new(Dataset::Base) do
       define_method(:load) do
@@ -54,7 +56,7 @@ describe Test::Unit::TestCase do
         Place.create!
       end
     end
-    
+
     testcase = Class.new(Test::Unit::TestCase) do
       dataset(dataset_one)
       def test_one; end
@@ -63,16 +65,16 @@ describe Test::Unit::TestCase do
       dataset(dataset_two)
       def test_two; end
     end
-    
+
     run_testcase(testcase)
-    Thing.count.should be(1)
-    Place.count.should be(0)
-    
+    expect(Thing.count).to eq(1)
+    expect(Place.count).to eq(0)
+
     run_testcase(testcase_child)
-    Thing.count.should be(1)
-    Place.count.should be(1)
+    expect(Thing.count).to eq(1)
+    expect(Place.count).to eq(1)
   end
-  
+
   it 'should forward blocks passed in to the dataset method' do
     load_count = 0
     testcase = Class.new(Test::Unit::TestCase) do
@@ -81,11 +83,11 @@ describe Test::Unit::TestCase do
         load_count += 1
       end
     end
-    
+
     run_testcase(testcase)
-    load_count.should == 1
+    expect(load_count).to eq(1)
   end
-  
+
   it 'should forward blocks passed in to the dataset method that do not use a dataset class' do
     load_count = 0
     testcase = Class.new(Test::Unit::TestCase) do
@@ -93,11 +95,11 @@ describe Test::Unit::TestCase do
         load_count += 1
       end
     end
-    
+
     run_testcase(testcase)
-    load_count.should == 1
+    expect(load_count).to eq(1)
   end
-  
+
   it 'should copy instance variables from block to tests' do
     value_in_test = nil
     testcase = Class.new(Test::Unit::TestCase) do
@@ -108,11 +110,11 @@ describe Test::Unit::TestCase do
         value_in_test = @myvar
       end
     end
-    
+
     run_testcase(testcase)
-    value_in_test.should == 'Hello'
+    expect(value_in_test).to eq('Hello')
   end
-  
+
   it 'should copy instance variables from block to subclass blocks' do
     value_in_subclass_block = nil
     testcase = Class.new(Test::Unit::TestCase) do
@@ -125,11 +127,11 @@ describe Test::Unit::TestCase do
         value_in_subclass_block = @myvar
       end
     end
-    
+
     run_testcase(subclass)
-    value_in_subclass_block.should == 'Hello'
+    expect(value_in_subclass_block).to eq('Hello')
   end
-  
+
   it 'should load the dataset when the suite is run' do
     load_count = 0
     dataset = Class.new(Dataset::Base) do
@@ -137,17 +139,17 @@ describe Test::Unit::TestCase do
         load_count += 1
       end
     end
-    
+
     testcase = Class.new(Test::Unit::TestCase) do
       self.dataset(dataset)
       def test_one; end
       def test_two; end
     end
-    
+
     run_testcase(testcase)
-    load_count.should be(1)
+    expect(load_count).to eq(1)
   end
-  
+
   it 'should expose data reading methods from dataset binding to the test methods through the test instances' do
     created_model, found_model = nil
     dataset = Class.new(Dataset::Base) do
@@ -155,20 +157,20 @@ describe Test::Unit::TestCase do
         created_model = create_model(Thing, :mything)
       end
     end
-    
+
     testcase = Class.new(Test::Unit::TestCase) do
       self.dataset(dataset)
       define_method :test_model_finders do
         found_model = things(:mything)
       end
     end
-    
+
     run_testcase(testcase)
-    testcase.should_not respond_to(:things)
-    found_model.should_not be_nil
-    found_model.should == created_model
+    expect(testcase).not_to respond_to(:things)
+    expect(found_model).not_to be_nil
+    expect(found_model).to eq(created_model)
   end
-  
+
   it 'should expose dataset helper methods to the test methods through the test instances' do
     dataset_one = Class.new(Dataset::Base) do
       helpers do
@@ -183,7 +185,7 @@ describe Test::Unit::TestCase do
       end
       def load; end
     end
-    
+
     test_instance = nil
     testcase = Class.new(Test::Unit::TestCase) do
       self.dataset(dataset_two)
@@ -191,20 +193,21 @@ describe Test::Unit::TestCase do
         test_instance = self
       end
     end
-    
+
     run_testcase(testcase)
-    
-    testcase.should_not respond_to(:helper_one)
-    testcase.should_not respond_to(:helper_two)
-    test_instance.should respond_to(:helper_one)
-    test_instance.should respond_to(:helper_two)
+
+    expect(testcase).not_to respond_to(:helper_one)
+    expect(testcase).not_to respond_to(:helper_two)
+    expect(test_instance).to respond_to(:helper_one)
+    expect(test_instance).to respond_to(:helper_two)
   end
-  
+
   def run_testcase(testcase)
+    require 'test/unit/worker-context'
     result = Test::Unit::TestResult.new
+    worker_context = Test::Unit::WorkerContext.new(nil, nil, result)
     testcase.module_eval { def test_dont_complain; end }
-    testcase.suite.run(result) {}
-    result.failure_count.should be(0)
-    result.error_count.should be(0)
+    testcase.suite.run(worker_context) {}
+    expect(result.faults.size).to eq(0)
   end
 end

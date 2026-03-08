@@ -78,9 +78,9 @@ module Dataset
       def resolve_identifier(identifier) # :nodoc:
         @paths.each do |path|
           file = File.join(path, identifier.to_s)
-          unless File.exists?(file + '.rb')
+          unless File.exist?(file + '.rb')
             file = file + '_' + file_suffix
-            next unless File.exists?(file + '.rb')
+            next unless File.exist?(file + '.rb')
           end
           require file
           begin

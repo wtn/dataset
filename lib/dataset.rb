@@ -1,5 +1,6 @@
-require 'activesupport'
-require 'activerecord'
+require 'active_support'
+require 'active_support/core_ext'
+require 'active_record'
 
 require 'dataset/version'
 require 'dataset/instance_methods'
@@ -19,26 +20,26 @@ require 'dataset/record/fixture'
 require 'dataset/record/model'
 
 # == Quick Start
-# 
+#
 # Write a test. If you want some data in your database, create a dataset.
 # Start simple.
-# 
+#
 #     describe States do
 #       dataset do
 #         [%w(Colorado CO), %w(North\ Carolina NC), %w(South\ Carolina SC)].each do |name,abbrev|
 #           create_record :state, abbrev.downcase, :name => name, :abbrev => abbrev
 #         end
 #       end
-#        
+#
 #       it 'should have an abbreviated name'
 #         states(:nc).abbrev.should be('NC')
 #       end
-#        
+#
 #       it 'should have a name'
 #         states(:nc).name.should be('North Carolin')
 #       end
 #     end
-# 
+#
 # Notice that you won't be using _find_id_ or _find_model_ in your tests. You
 # use methods like _states_ and _state_id_, as in the example above.
 #
@@ -77,15 +78,17 @@ module Dataset
       require 'dataset/extensions/cucumber'
     elsif test_context.name =~ /TestCase\Z/
       require 'dataset/extensions/test_unit'
+    elsif defined?(RSpec) && test_context.ancestors.include?(RSpec::Core::ExampleGroup)
+      require 'dataset/extensions/rspec'
     elsif test_context.name =~ /ExampleGroup\Z/
       require 'dataset/extensions/rspec'
     else
       raise "I don't understand your test framework"
     end
-    
+
     test_context.extend ContextClassMethods
   end
-  
+
   # Methods that are added to the class that Dataset is included in (the test
   # context class).
   #
@@ -93,22 +96,26 @@ module Dataset
     def self.extended(context_class) # :nodoc:
       context_class.module_eval do
         include InstanceMethods
-        superclass_delegating_accessor :dataset_session
+        class_attribute :dataset_session, instance_writer: false
       end
     end
-    
+
     mattr_accessor :datasets_database_dump_path
-    self.datasets_database_dump_path = File.expand_path(RAILS_ROOT + '/tmp/dataset') if defined?(RAILS_ROOT)
-    
+    if defined?(Rails)
+      self.datasets_database_dump_path = Rails.root.join('tmp/dataset')
+    elsif defined?(RAILS_ROOT)
+      self.datasets_database_dump_path = File.join(RAILS_ROOT, 'tmp/dataset')
+    end
+
     # Replaces the default Dataset::Resolver with one that will look for
     # dataset class definitions in the specified directory. Captures of the
     # database will be stored in a subdirectory 'tmp' (see
     # Dataset::Database::Base).
     def datasets_directory(path)
       Dataset::Resolver.default = Dataset::DirectoryResolver.new(path)
-      Dataset::ContextClassMethods.datasets_database_dump_path = File.join(path, '/tmp/dataset')
+      Dataset::ContextClassMethods.datasets_database_dump_path = File.join(path, 'tmp/dataset')
     end
-    
+
     def add_dataset(*datasets, &block) # :nodoc:
       dataset_session = dataset_session_in_hierarchy
       datasets.each { |dataset| dataset_session.add_dataset(self, dataset) }
@@ -116,12 +123,14 @@ module Dataset
         define_method :doload, block
       }) unless block.nil?
     end
-    
+
     def dataset_session_in_hierarchy # :nodoc:
       self.dataset_session ||= begin
-        database_spec = ActiveRecord::Base.configurations['test'].with_indifferent_access
-        database_class = Dataset::Database.const_get(database_spec[:adapter].classify)
-        database = database_class.new(database_spec, Dataset::ContextClassMethods.datasets_database_dump_path)
+        db_config = ActiveRecord::Base.connection_db_config
+        adapter = db_config.adapter
+        config_hash = db_config.configuration_hash.with_indifferent_access
+        database_class = Dataset::Database.const_get(adapter.classify)
+        database = database_class.new(config_hash, Dataset::ContextClassMethods.datasets_database_dump_path)
         Dataset::Session.new(database)
       end
     end

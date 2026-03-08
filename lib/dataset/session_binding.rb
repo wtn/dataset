@@ -250,7 +250,7 @@ module Dataset
     end
     
     def name_to_sym(name)
-      name.to_s.underscore.gsub("'", "").gsub("\"", "").gsub(" ", "_").to_sym if name
+      name.to_s.underscore.gsub("'", %q{}).gsub('"', %q{}).gsub(' ', '_').to_sym if name
     end
     
     protected
@@ -258,13 +258,10 @@ module Dataset
         symbolic_name, attributes = extract_creation_arguments args
         record_meta  = record_meta_for_type(record_type)
         record       = dataset_record_class.new(record_meta, attributes, symbolic_name, self)
-        return_value = nil
-        
+
         @model_finders.create_finders(record_meta)
-        ActiveRecord::Base.silence do
-          return_value = record.create
-          @id_cache[record_meta.heirarchy.id_cache_key][symbolic_name] = record.id
-        end
+        return_value = record.create
+        @id_cache[record_meta.heirarchy.id_cache_key][symbolic_name] = record.id
         return_value
       end
       

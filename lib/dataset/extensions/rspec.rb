@@ -1,10 +1,10 @@
 module Dataset
   module Extensions # :nodoc:
-    
+
     module RSpecExampleGroup # :nodoc:
       def dataset(*datasets, &block)
         add_dataset(*datasets, &block)
-        
+
         load = nil
         before(:all) do
           load = dataset_session.load_datasets_for(self.class)
@@ -15,7 +15,7 @@ module Dataset
         end
       end
     end
-    
+
   end
 end
-Spec::Example::ExampleGroup.extend Dataset::Extensions::RSpecExampleGroup
+RSpec::Core::ExampleGroup.extend Dataset::Extensions::RSpecExampleGroup
